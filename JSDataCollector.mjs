@@ -8,6 +8,7 @@ const prompt = promptSync();
 XLSX.set_fs(fs);
 const d = new Date();
 let dateString = d.toUTCString();
+const sourcePathArray = ['acs', 'acs1']
 const states = {
    "01": "Alabama",
    "02": "Alaska",
@@ -113,45 +114,62 @@ const geographicareas = {
 }
 
 
-
+console.log("Current source path is " + sourcePathArray)
 const year = prompt("What year? ")
-const values = []
+var values = []
 var moreValues = 'y'
 var geographicarea = 'n'
 
 
-while(moreValues == 'y'){
-    values.push(prompt("What value?"))
-    moreValues = prompt("More values? y/n")
-}
+//while(moreValues == 'y'){
+//    values.push(prompt("What value?"))
+//    moreValues = prompt("More values? y/n")
+//}
 
-var defaultGeo = {
-    state: '*',
-    county: '*'
-}
+var valueEntry = prompt("Enter all variables, separated by a comma (,): ")
+valueEntry = valueEntry.replace(/\s/g, '');
+values = valueEntry.split(',')
 
-geographicarea = prompt('Geographic area? y/n')
+var workingGeo = {}
+
+//geographicarea = prompt('Geographic area? y/n')
 
 console.log(geographicarea)
 
+var areaTypes =  []
 
-if (geographicarea == 'y'){
+
+//if (geographicarea == 'y'){
     console.log(geographicareas)
-    var areatype = prompt("Enter area type")
-    var areavalue = prompt("Enter area value")
-    defaultGeo = {}
-    defaultGeo[geographicareas[areatype]] = areavalue
-    console.log(defaultGeo)
+    var areaTypeEntry = prompt("Enter the number for each area type, separated by a comma (,): ")
+    areaTypeEntry = areaTypeEntry.replace(/\s/g, '');
+    areaTypes = areaTypeEntry.split(',')
+    areaTypes.sort(function(b, a) {
+    return parseInt(a.replace(/,/g,'') - parseInt(b.replace(/,/g,'')));
+    });
+    console.log(areaTypes)
+    for(let i = 0, l = areaTypes.length; i < l; i++){
 
-}
+        var chosenGeo = geographicareas[areaTypes[i]]
+        var areavalue = prompt("Enter area value for "+ chosenGeo + ": ")
+        workingGeo[chosenGeo] = areavalue
 
+    }
+    //var areavalue = prompt("Enter area value")
+    //defaultGeo = {}
+    //defaultGeo[geographicareas[areatype]] = areavalue
+    console.log(workingGeo)
 
+//}
+
+var consoleCountyOutput = ""
+var consoleStateOutput = ""
 
 census(
     {
         vintage: year,
-        geoHierarchy: defaultGeo,
-        sourcePath: ['acs', 'acs1'],
+        geoHierarchy: workingGeo,
+        sourcePath: sourcePathArray,
         values: values,
         //predicates: {
           //  B01001_001E: '0:100000', // number range separated by `:`
@@ -164,24 +182,42 @@ census(
 
         if (output != null){
 
-            try {
+            //try {
 
                 for(let i = 0, l = output.length; i < l; i++) { // Converts state and county fips codes to names
                 
                 
 
-                    var workingState = output[i].state
-                    var workingCounty = output[i].county
-                    var fullFips = workingState + workingCounty
-                    var countyName = getCountyByFips(fullFips)
-                    output[i].state = states[workingState]
-                    output[i].county = countyName.name
-                    output[i].fips = fullFips
+                    try{
+                        var workingState = output[i].state
+                        output[i].state = states[workingState]
+                    }
+                    catch(err){
+                        if(consoleStateOutput != "Missing state data in the output"){
+                            consoleStateOutput = "Missing state data in the output"
+                            console.log("Missing state data in the output")
+                        }
+                        
+                    }
+                    try{
+                        var workingCounty = output[i].county
+                        var fullFips = workingState + workingCounty
+                        var countyName = getCountyByFips(fullFips)
+                        output[i].county = countyName.name
+                        output[i].fips = fullFips
+                    }
+                    catch(err){
+                        
+                        if(consoleCountyOutput != "Missing county and/or state data in output"){
+                            consoleCountyOutput = "Missing county and/or state data in output"
+                            console.log("Missing county and/or state data in output")
+                        }
+                        
+                    }
+                    
+
                 }
-            }
-            catch(err){
-                    console.log("An error occurred trying to assign state and county names - data will contain unparsed fips codes")
-            }    
+  
         
     
 
@@ -189,7 +225,6 @@ census(
         var worksheet = XLSX.utils.json_to_sheet(res);
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
         XLSX.writeFile(workbook, "Results.xlsb");
-        //fs.writeFile('output.json', JSON.stringify(res), () => console.log(res))
 
         console.log('***********************************')
         console.log('*                                 *')    
