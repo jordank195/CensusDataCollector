@@ -6,6 +6,8 @@ import { getCountyByFips } from "@nickgraffis/us-counties"
 import promptSync from 'prompt-sync'
 const prompt = promptSync();
 XLSX.set_fs(fs);
+const d = new Date();
+let dateString = d.toUTCString();
 const states = {
    "01": "Alabama",
    "02": "Alaska",
@@ -159,7 +161,7 @@ census(
 
         var output = res
 
-        if (output *= null){
+        if (output != null){
 
             for(let i = 0, l = output.length; i < l; i++) { // Converts state and county fips codes to names
                 var workingState = output[i].state
@@ -176,8 +178,15 @@ census(
         var workbook = XLSX.utils.book_new();
         var worksheet = XLSX.utils.json_to_sheet(res);
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-        XLSX.writeFile(workbook, "Report.xlsb");
+        XLSX.writeFile(workbook, "Results.xlsb");
         //fs.writeFile('output.json', JSON.stringify(res), () => console.log(res))
+
+        console.log('***********************************')
+        console.log('*                                 *')    
+        console.log('*  Results added to Results.xlsb  *')
+        console.log('*                                 *') 
+        console.log('***********************************')
+
         
         } else{
 
