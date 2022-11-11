@@ -85,31 +85,31 @@ const states = {
    "52": "Virgin Islands of the U.S."
 }
 const geographicareas = {
-    '1': "alaska native regional corporation",
-    '2': 'american indian-area/alaska native area/hawaiian home land',
-    '3': 'block group',
-    '4': 'combined new england city and town area',
-    '5': 'combined statistical area',
-    '6': 'congressional district',
-    '7': 'consolidated cities',
+    '1': "alaska-native-regional-corporation",
+    '2': 'american-indian-area/alaska-native-area/hawaiian-home-land',
+    '3': 'block-group',
+    '4': 'combined-new-england-city-and-town-area',
+    '5': 'combined-statistical-area',
+    '6': 'congressional-district',
+    '7': 'consolidated-cities',
     '8': 'county',
-    '9': 'county subdivision',
+    '9': 'county-subdivision',
     '10': 'division',
-    '11': 'metropolitan statistical area/micropolitan statistical area',
-    '12': 'new england city and town area',
+    '11': 'metropolitan-statistical-area/micropolitan-statistical-area',
+    '12': 'new-england-city-and-town-area',
     '13': 'place',
-    '14': 'public use microdata area',
+    '14': 'public-use-microdata-area',
     '15': 'region',
-    '16': 'school district (elementary)',
-    '17': 'school district (secondary)',
-    '18': 'school district (unified)',
+    '16': 'school-district-(elementary)',
+    '17': 'school-district-(secondary)',
+    '18': 'school-district-(unified)',
     '19': 'state',
-    '20': 'state legislative district (lower chamber)',
-    '21': 'state legislative district (upper chamber)',
+    '20': 'state-legislative-district-(lower-chamber)',
+    '21': 'state-legislative-district-(upper-chamber)',
     '22': 'tract',
-    '23': 'urban area',
+    '23': 'urban-area',
     '24': 'us',
-    '25': 'zip code tabulation area'
+    '25': 'zip-code-tabulation-area'
 }
 
 
@@ -139,6 +139,7 @@ if (geographicarea == 'y'){
     console.log(geographicareas)
     var areatype = prompt("Enter area type")
     var areavalue = prompt("Enter area value")
+    defaultGeo = {}
     defaultGeo[geographicareas[areatype]] = areavalue
     console.log(defaultGeo)
 
@@ -163,16 +164,25 @@ census(
 
         if (output != null){
 
-            for(let i = 0, l = output.length; i < l; i++) { // Converts state and county fips codes to names
-                var workingState = output[i].state
-                var workingCounty = output[i].county
-                var fullFips = workingState + workingCounty
-                var countyName = getCountyByFips(fullFips)
-                output[i].state = states[workingState]
-                output[i].county = countyName.name
-                output[i].fips = fullFips
+            try {
 
-        }
+                for(let i = 0, l = output.length; i < l; i++) { // Converts state and county fips codes to names
+                
+                
+
+                    var workingState = output[i].state
+                    var workingCounty = output[i].county
+                    var fullFips = workingState + workingCounty
+                    var countyName = getCountyByFips(fullFips)
+                    output[i].state = states[workingState]
+                    output[i].county = countyName.name
+                    output[i].fips = fullFips
+                }
+            }
+            catch(err){
+                    console.log("An error occurred trying to assign state and county names - data will contain unparsed fips codes")
+            }    
+        
     
 
         var workbook = XLSX.utils.book_new();
