@@ -8,7 +8,7 @@ const prompt = promptSync();
 XLSX.set_fs(fs);
 const d = new Date();
 let dateString = d.toUTCString();
-const sourcePathArray = ['acs', 'acs1']
+const sourcePathArray = ['cbp']
 const states = {
    "01": "Alabama",
    "02": "Alaska",
