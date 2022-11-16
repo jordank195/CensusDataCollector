@@ -6,9 +6,9 @@ import { getCountyByFips } from "@nickgraffis/us-counties"
 import promptSync from 'prompt-sync'
 const prompt = promptSync();
 XLSX.set_fs(fs);
-const d = new Date();
-let dateString = d.toUTCString();
-const sourcePathArray = ['acs', 'acs1']
+const d = Date.now()
+let dateHex = d.toString(16)
+var sourcePathArray = ['acs', 'acs1']
 const states = {
    "01": "Alabama",
    "02": "Alaska",
@@ -113,8 +113,8 @@ const geographicareas = {
     '25': 'zip-code-tabulation-area'
 }
 
-
-console.log("Current source path is " + sourcePathArray)
+console.log(dateHex)
+//console.log("Current source path is " + sourcePathArray)
 const year = prompt("What year? ")
 var values = []
 var moreValues = 'y'
@@ -125,11 +125,14 @@ var geographicarea = 'n'
 //    values.push(prompt("What value?"))
 //    moreValues = prompt("More values? y/n")
 //}
-
+var sourcePathEntry = prompt("Enter the source path in url format (e.g. acs/acs1): ")
+sourcePathEntry = sourcePathEntry.replace(/\s/g, '');
+sourcePathArray = sourcePathEntry.split('/')
+console.log("Current source path is " + sourcePathArray)
 var valueEntry = prompt("Enter all variables, separated by a comma (,): ")
 valueEntry = valueEntry.replace(/\s/g, '');
 values = valueEntry.split(',')
-
+console.log("Chosen variables are " + values)
 var workingGeo = {}
 
 //geographicarea = prompt('Geographic area? y/n')
@@ -221,16 +224,33 @@ census(
         
     
 
-        var workbook = XLSX.utils.book_new();
+        //var workbook = XLSX.utils.book_new();
+        var workbook = XLSX.readFile('Results.xlsb')
         var worksheet = XLSX.utils.json_to_sheet(res);
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+        XLSX.utils.book_append_sheet(workbook, worksheet, dateHex);
         XLSX.writeFile(workbook, "Results.xlsb");
 
-        console.log('***********************************')
-        console.log('*                                 *')    
-        console.log('*  Results added to Results.xlsb  *')
-        console.log('*                                 *') 
-        console.log('***********************************')
+        var outputMessage = '*  Results added to '+dateHex+ ' in Results.xlsb      *'
+
+        var starsMessage = '*'
+        var starsSpaceMessage = '*'
+
+        for(let i = 0, l = outputMessage.length; i < l; i++) {
+
+            starsMessage = starsMessage + '*'
+            starsSpaceMessage = starsSpaceMessage + ' '
+
+        }
+
+        starsMessage = starsMessage + '*'
+        starsSpaceMessage = starsSpaceMessage + '*'
+
+
+        console.log(starsMessage)
+        console.log(starsSpaceMessage)    
+        console.log(outputMessage)
+        console.log(starsSpaceMessage) 
+        console.log(starsMessage)
 
         
         } else{
