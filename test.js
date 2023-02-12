@@ -11,7 +11,7 @@ census(
             state: '*',
             county: '*',
         },
-        sourcePath: ['acs', 'acs1'],
+        sourcePath: ['cbp'],
         values: ['B17002_001M', 'B17002_001MA', 'B17002_001E'],
         //predicates: {
           //  B01001_001E: '0:100000', // number range separated by `:`
