@@ -6,6 +6,7 @@ import { getCountyByFips } from "@nickgraffis/us-counties"
 import promptSync from 'prompt-sync'
 const prompt = promptSync();
 XLSX.set_fs(fs);
+const apiKey = 'c3889f5e4df523b520093ced0ab154168e094ead'
 const d = Date.now()
 let dateHex = d.toString(16)
 var sourcePathArray = ['acs', 'acs1']
@@ -114,8 +115,10 @@ const geographicareas = {
 }
 
 
-const year = prompt("What year? ")  // Prompt to enter query year
-
+var years = []
+var yearEntry = prompt("Enter all years, separated by a comma (,): ")  // Prompt to enter query year
+yearEntry = yearEntry.replace(/\s/g, '')
+years = yearEntry.split(',')
 
 
 var sourcePathEntry = prompt("Enter the source path in url format (e.g. acs/acs1): ")   // Prompt to enter query source path
@@ -150,7 +153,7 @@ for(let i = 0, l = areaTypes.length; i < l; i++){                               
 
 var workingPredicates = {}                                                                              // Pre-declare dictionary for predicates
 var predicateTypes = []
-var predicateCheck = prompt("Any predicates? (e.g. NAICS1997) y/n: ")                                                    // Not all queries require a predicate; checks if predicate(s) needed
+var predicateCheck = prompt("Any predicates? (e.g. NAICS1997) y/n: ").toLowerCase()                     // Not all queries require a predicate; checks if predicate(s) needed
 if (predicateCheck == 'y'){
     var predicateTypeEntry = prompt("Enter each predicate type, separated by a comma (,): ")            // Prompt to enter predicate type
     predicateTypeEntry = predicateTypeEntry.replace(/\s/g, '')                                          // Tidy up predicate type entry to remove whitespace 
@@ -172,301 +175,168 @@ var consoleCountyOutput = ""    // Pre-declares values used for adding county to
 var consoleStateOutput = ""     // Pre-declares values used for adding state to excel
 
 
-// TO-DO: Add comments for section below. Query is slightly different depending on if there is or isn't a predicate. Probably more efficient way to run that.
-// Also cross-references state and counties with FIPS codes
-// Also adds data to new excel sheet with current date and time in hexadecimal as sheetname.
+// TO-DO: Add comments for section below.
+// queryCensus() Query is slightly different depending on if there is or isn't a predicate. Probably more efficient way to run that.
+// assignFIPS() cross-references state and counties with FIPS codes
+// writeToExcel() adds data to new excel sheet with current date and time in hexadecimal as sheetname.
 // Finally prints a pretty message with stars at the end
 
-if (predicateCheck == 'y'){
-    census(
-    {
-        vintage: year,
-        geoHierarchy: workingGeo,
-        sourcePath: sourcePathArray,
-        values: values,
-        predicates: workingPredicates,
-        statsKey: 'c3889f5e4df523b520093ced0ab154168e094ead',
-    },
-    (err, res) => {
+// Running multiple years in a single query required asynchronous functions, as the for loop that sequenced through each year would finish before the api had finished fetching the data.
+// processCensusData() calls each function individually, and awaits a promise to see each call to completion
 
-        var output = res
+processCensusData()
 
-        if (output != null){
+async function processCensusData(){
 
-            //try {
+    for (let j = 0, k = years.length; j < k; j++){
 
-                for(let i = 0, l = output.length; i < l; i++) { // Converts state and county fips codes to names
-                
-                
+        const rawOutput = await queryCensus(years[j]);
+        if (rawOutput != null){
 
-                    try{
-                        var workingState = output[i].state
-                        output[i].state = states[workingState]
-                    }
-                    catch(err){
-                        if(consoleStateOutput != "Missing state data in the output"){
-                            consoleStateOutput = "Missing state data in the output"
-                            console.log("Missing state data in the output")
-                        }
-                        
-                    }
-                    try{
-                        var workingCounty = output[i].county
-                        var fullFips = workingState + workingCounty
-                        var countyName = getCountyByFips(fullFips)
-                        output[i].county = countyName.name
-                        output[i].fips = fullFips
-                    }
-                    catch(err){
-                        
-                        if(consoleCountyOutput != "Missing county and/or state data in output"){
-                            consoleCountyOutput = "Missing county and/or state data in output"
-                            console.log("Missing county and/or state data in output")
-                        }
-                        
-                    }
-                    
+           const assignedOutput = await assignFIPS(rawOutput)
 
-                }
-  
+
+            const finshedWriting = await writeToExcel(assignedOutput, years[j])
+            console.log(finshedWriting)
+
+            
         
-    
 
-        //var workbook = XLSX.utils.book_new();
-        var workbook = XLSX.readFile('Results.xlsb')
-        var worksheet = XLSX.utils.json_to_sheet(res);
-        XLSX.utils.book_append_sheet(workbook, worksheet, dateHex);
-        XLSX.writeFile(workbook, "Results.xlsb");
+        }
+        else{
 
-        var outputMessage = '*  Results added to '+dateHex+ ' in Results.xlsb      *'
-
-        var starsMessage = '*'
-        var starsSpaceMessage = '*'
-
-        for(let i = 0, l = outputMessage.length; i < l-2; i++) {
-
-            starsMessage = starsMessage + '*'
-            starsSpaceMessage = starsSpaceMessage + ' '
+            console.log('************************')
+            console.log('*                      *')    
+            console.log('*  No results for '+years[j]+' *')
+            console.log('*                      *') 
+            console.log('************************')
 
         }
 
-        starsMessage = starsMessage + '*'
-        starsSpaceMessage = starsSpaceMessage + '*'
-
-
-        console.log(starsMessage)
-        console.log(starsSpaceMessage)    
-        console.log(outputMessage)
-        console.log(starsSpaceMessage) 
-        console.log(starsMessage)
-
-        
-        } else{
-
-        console.log('****************')
-        console.log('*              *')    
-        console.log('*  No results  *')
-        console.log('*              *') 
-        console.log('****************')
-
     }
-
-
-    }
-)
-} else{
-    census(
-    {
-        vintage: year,
-        geoHierarchy: workingGeo,
-        sourcePath: sourcePathArray,
-        values: values,
-        //predicates: workingPredicates,
-        statsKey: 'c3889f5e4df523b520093ced0ab154168e094ead',
-    },
-    (err, res) => {
-
-        var output = res
-
-        if (output != null){
-
-            //try {
-
-                for(let i = 0, l = output.length; i < l; i++) { // Converts state and county fips codes to names
-                
-                
-
-                    try{
-                        var workingState = output[i].state
-                        output[i].state = states[workingState]
-                    }
-                    catch(err){
-                        if(consoleStateOutput != "Missing state data in the output"){
-                            consoleStateOutput = "Missing state data in the output"
-                            console.log("Missing state data in the output")
-                        }
-                        
-                    }
-                    try{
-                        var workingCounty = output[i].county
-                        var fullFips = workingState + workingCounty
-                        var countyName = getCountyByFips(fullFips)
-                        output[i].county = countyName.name
-                        output[i].fips = fullFips
-                    }
-                    catch(err){
-                        
-                        if(consoleCountyOutput != "Missing county and/or state data in output"){
-                            consoleCountyOutput = "Missing county and/or state data in output"
-                            console.log("Missing county and/or state data in output")
-                        }
-                        
-                    }
-                    
-
-                }
-  
-        
-    
-
-        //var workbook = XLSX.utils.book_new();
-        var workbook = XLSX.readFile('Results.xlsb')
-        var worksheet = XLSX.utils.json_to_sheet(res);
-        XLSX.utils.book_append_sheet(workbook, worksheet, dateHex);
-        XLSX.writeFile(workbook, "Results.xlsb");
-
-        var outputMessage = '*       Results added to '+dateHex+ ' in Results.xlsb       *'
-
-        var starsMessage = '*'
-        var starsSpaceMessage = '*'
-
-        for(let i = 0, l = outputMessage.length; i < l-2; i++) {
-
-            starsMessage = starsMessage + '*'
-            starsSpaceMessage = starsSpaceMessage + ' '
-
-        }
-
-        starsMessage = starsMessage + '*'
-        starsSpaceMessage = starsSpaceMessage + '*'
-
-
-        console.log(starsMessage)
-        console.log(starsSpaceMessage)    
-        console.log(outputMessage)
-        console.log(starsSpaceMessage) 
-        console.log(starsMessage)
-
-        
-        } else{
-
-        console.log('****************')
-        console.log('*              *')    
-        console.log('*  No results  *')
-        console.log('*              *') 
-        console.log('****************')
-
-    }
-
-
-    }
-)
 }
-// census(
-//     {
-//         vintage: year,
-//         geoHierarchy: workingGeo,
-//         sourcePath: sourcePathArray,
-//         values: values,
-//         predicates: workingPredicates,
-//         statsKey: 'c3889f5e4df523b520093ced0ab154168e094ead',
-//     },
-//     (err, res) => {
 
-//         var output = res
+function writeToExcel(results, year){
 
-//         if (output != null){
+    return new Promise(resolve => {
 
-//             //try {
+            var workbook = XLSX.readFile('Results.xlsb')
+            var worksheet = XLSX.utils.json_to_sheet(results);
+            XLSX.utils.book_append_sheet(workbook, worksheet, year+'_'+dateHex);
+            XLSX.writeFile(workbook, "Results.xlsb");
 
-//                 for(let i = 0, l = output.length; i < l; i++) { // Converts state and county fips codes to names
-                
-                
+            var outputMessage = '*       Results added to '+year+'_'+dateHex+ ' in Results.xlsb       *'
 
-//                     try{
-//                         var workingState = output[i].state
-//                         output[i].state = states[workingState]
-//                     }
-//                     catch(err){
-//                         if(consoleStateOutput != "Missing state data in the output"){
-//                             consoleStateOutput = "Missing state data in the output"
-//                             console.log("Missing state data in the output")
-//                         }
-                        
-//                     }
-//                     try{
-//                         var workingCounty = output[i].county
-//                         var fullFips = workingState + workingCounty
-//                         var countyName = getCountyByFips(fullFips)
-//                         output[i].county = countyName.name
-//                         output[i].fips = fullFips
-//                     }
-//                     catch(err){
-                        
-//                         if(consoleCountyOutput != "Missing county and/or state data in output"){
-//                             consoleCountyOutput = "Missing county and/or state data in output"
-//                             console.log("Missing county and/or state data in output")
-//                         }
-                        
-//                     }
-                    
+            var starsMessage = '*'
+            var starsSpaceMessage = '*'
 
-//                 }
-  
-        
+            for(let i = 0, l = outputMessage.length; i < l-2; i++) {
+
+                starsMessage = starsMessage + '*'
+                starsSpaceMessage = starsSpaceMessage + ' '
+
+            }
+
+            starsMessage = starsMessage + '*'
+            starsSpaceMessage = starsSpaceMessage + '*'
+
+
+            var completeMessage = starsMessage + "\n" + starsSpaceMessage + "\n" + outputMessage + "\n" + starsSpaceMessage + "\n" + starsMessage
+
+
+
+            resolve(completeMessage)
+
+        })
+}
+
+function assignFIPS(output){
+
+    return new Promise(resolve => {
+
+        for(let i = 0, l = output.length; i < l; i++) { // Converts state and county fips codes to names
+
+
+
+        try{
+            var workingState = output[i].state
+            output[i].state = states[workingState]
+        }
+        catch(err){
+            if(consoleStateOutput != "Missing state data in the output"){
+                consoleStateOutput = "Missing state data in the output"
+                console.log("Missing state data in the output")
+            }
+            
+        }
+        try{
+            var workingCounty = output[i].county
+            var fullFips = workingState + workingCounty
+            var countyName = getCountyByFips(fullFips)
+            output[i].county = countyName.name
+            output[i].fips = fullFips
+        }
+        catch(err){
+            
+            if(consoleCountyOutput != "Missing county and/or state data in output"){
+                consoleCountyOutput = "Missing county and/or state data in output"
+                console.log("Missing county and/or state data in output")
+            }
+            
+        }
     
 
-//         //var workbook = XLSX.utils.book_new();
-//         var workbook = XLSX.readFile('Results.xlsb')
-//         var worksheet = XLSX.utils.json_to_sheet(res);
-//         XLSX.utils.book_append_sheet(workbook, worksheet, dateHex);
-//         XLSX.writeFile(workbook, "Results.xlsb");
-
-//         var outputMessage = '*  Results added to '+dateHex+ ' in Results.xlsb      *'
-
-//         var starsMessage = '*'
-//         var starsSpaceMessage = '*'
-
-//         for(let i = 0, l = outputMessage.length; i < l; i++) {
-
-//             starsMessage = starsMessage + '*'
-//             starsSpaceMessage = starsSpaceMessage + ' '
-
-//         }
-
-//         starsMessage = starsMessage + '*'
-//         starsSpaceMessage = starsSpaceMessage + '*'
+    }
 
 
-//         console.log(starsMessage)
-//         console.log(starsSpaceMessage)    
-//         console.log(outputMessage)
-//         console.log(starsSpaceMessage) 
-//         console.log(starsMessage)
+    resolve(output)
+})
+}
 
-        
-//         } else{
+function queryCensus(workingYear){
 
-//         console.log('****************')
-//         console.log('*              *')    
-//         console.log('*  No results  *')
-//         console.log('*              *') 
-//         console.log('****************')
+    return new Promise(resolve => {
 
-//     }
+    if (predicateCheck == 'y'){
+
+        census(
+            {
+
+                vintage: workingYear,
+                geoHierarchy: workingGeo,
+                sourcePath: sourcePathArray,
+                values: values,
+                predicates: workingPredicates,
+                statsKey: apiKey,
+            },
+        (err, res) => {
+
+            resolve(res)
+
+        }
+        )
+
+    } else{
+
+        census(
+            {
 
 
-//     }
-// )
+            vintage: workingYear,
+            geoHierarchy: workingGeo,
+            sourcePath: sourcePathArray,
+            values: values,
+            statsKey: apiKey,
 
 
+    },
+        (err, res) => {
+
+
+            resolve(res)
+
+        }
+
+        )
+}})
+}
